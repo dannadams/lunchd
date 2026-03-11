@@ -985,6 +985,11 @@ async function reverseGeocode(lat, lng) {
       userLocationName = `${city}, ${state}`;
       document.getElementById('locationInput').value = userLocationName;
       document.querySelectorAll('.location-display').forEach(el => el.textContent = userLocationName);
+      const tag = document.getElementById('find-tagline');
+      if (tag) {
+        const r = document.getElementById('radiusSlider')?.value || searchRadius;
+        tag.textContent = r + ' mi · ' + userLocationName;
+      }
     }
   } catch(e) { console.log('Reverse geocode failed', e); }
 }
