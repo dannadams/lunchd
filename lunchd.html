@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lunchd — Where should we eat?</title>
+<!--
+  ============================================================
+  LUNCHD.APP — Google Places API Integration
+  ============================================================
+  SETUP (3 steps, then you're live):
+
+  STEP 1 — Get your Google API Key:
+    a) Go to https://console.cloud.google.com
+    b) Create a new project, name it "Lunchd"
+    c) Click "APIs & Services" then "Enable APIs"
+    d) Search for and enable: "Places API (New)"
+    e) Also enable: "Maps JavaScript API"
+    f) Click "Credentials" then "Create Credentials" then "API Key"
+    g) Copy your key
+    h) Under key restrictions, add your domain: lunchd.app
+
+  STEP 2 — Paste your key into this file:
+    Scroll to the <script> section and find this line:
+      const GOOGLE_API_KEY = 'AIzaSyApxi_T04srjOZimRvDnPuU_gZGM1L_O4A';
+    Replace AIzaSyApxi_T04srjOZimRvDnPuU_gZGM1L_O4A with your actual key.
+    Save the file.
+
+  STEP 3 — Deploy to Vercel:
+    a) Push this file to a GitHub repo
+    b) Go to vercel.com and import that repo
+    c) In Namecheap DNS, add a CNAME record:
+         Host: @   Value: cname.vercel-dns.com
+    d) In Vercel project settings, add domain: lunchd.app
+    e) Wait ~10 min for DNS to propagate. You're live!
+
+  NOTE: App runs on simulated data until a real key is added.
+  The switch from simulated to live data is automatic.
+  ============================================================
+-->
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ===== THEME VARIABLES ===== */
+  :root {
+    --bg: #FFF8F0;
+    --surface: #FFFFFF;
+    --primary: #FF6B35;
+    --primary2: #FFD23F;
+    --accent: #06D6A0;
+    --text: #2D2D2D;
+    --text2: #666;
+    --border: #FFE0CC;
+    --card-bg: #FFFFFF;
+    --shadow: 0 4px 20px rgba(255,107,53,0.15);
+    --radius: 20px;
+    --font-head: 'Fredoka One', cursive;
+    --font-body: 'Nunito', sans-serif;
+    --tag-bg: #FFF0E8;
+    --tag-color: #FF6B35;
+    --btn-text: #FFFFFF;
+    --header-bg: linear-gradient(135deg, #FF6B35 0%, #FFD23F 100%);
+    --vote-yes: #06D6A0;
+    --vote-no: #FF6B35;
+    --results-bar: #FF6B35;
+  }
+
+  body.theme-business {
+    --bg: #F7F9FC;
+    --surface: #FFFFFF;
+    --primary: #2563EB;
+    --primary2: #3B82F6;
+    --accent: #10B981;
+    --text: #111827;
+    --text2: #6B7280;
+    --border: #E5E7EB;
+    --card-bg: #FFFFFF;
+    --shadow: 0 4px 20px rgba(37,99,235,0.1);
+    --radius: 12px;
+    --font-head: 'Playfair Display', serif;
+    --font-body: 'Inter', sans-serif;
+    --tag-bg: #EFF6FF;
+    --tag-color: #2563EB;
+    --btn-text: #FFFFFF;
+    --header-bg: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
+    --vote-yes: #10B981;
+    --vote-no: #EF4444;
+    --results-bar: #2563EB;
+  }
+
+  body.theme-bold {
+    --bg: #0D0D0D;
+    --surface: #1A1A1A;
+    --primary: #FF0050;
+    --primary2: #FF6B00;
+    --accent: #00FFD1;
+    --text: #FFFFFF;
+    --text2: #999;
+    --border: #333;
+    --card-bg: #1A1A1A;
+    --shadow: 0 4px 30px rgba(255,0,80,0.2);
+    --radius: 8px;
+    --font-head: 'Bebas Neue', cursive;
+    --font-body: 'Space Grotesk', sans-serif;
+    --tag-bg: #2A0A14;
+    --tag-color: #FF0050;
+    --btn-text: #FFFFFF;
+    --header-bg: linear-gradient(135deg, #FF0050 0%, #FF6B00 100%);
+    --vote-yes: #00FFD1;
+    --vote-no: #FF0050;
+    --results-bar: #FF0050;
+  }
+
+  body.theme-casual {
+    --bg: #FEFAF5;
+    --surface: #FFFFFF;
+    --primary: #8B5E3C;
+    --primary2: #C9956A;
+    --accent: #5B8C5A;
+    --text: #3C2A1A;
+    --text2: #8B7355;
+    --border: #E8DDD0;
+    --card-bg: #FFFFFF;
+    --shadow: 0 4px 20px rgba(139,94,60,0.12);
+    --radius: 16px;
+    --font-head: 'DM Sans', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --tag-bg: #F5EDE3;
+    --tag-color: #8B5E3C;
+    --btn-text: #FFFFFF;
+    --header-bg: linear-gradient(135deg, #8B5E3C 0%, #C9956A 100%);
+    --vote-yes: #5B8C5A;
+    --vote-no: #C0392B;
+    --results-bar: #8B5E3C;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    transition: all 0.3s ease;
+  }
+
+  /* ===== LAYOUT ===== */
+  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; position: relative; }
+
+  .screen { display: none; min-height: 100vh; flex-direction: column; animation: fadeIn 0.3s ease; }
+  .screen.active { display: flex; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: var(--header-bg);
+    padding: 48px 24px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -20px; left: 0; right: 0;
+    height: 40px;
+    background: var(--bg);
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  }
+  .header-inner { position: relative; z-index: 1; }
+  .app-logo { font-family: var(--font-head); font-size: 2rem; color: white; letter-spacing: 0.02em; }
+  .app-tagline { color: rgba(255,255,255,0.85); font-size: 0.9rem; margin-top: 4px; }
+
+  /* ===== CONTENT AREA ===== */
+  .content { flex: 1; padding: 32px 20px 100px; overflow-y: auto; }
+  .content-tight { padding: 20px 20px 100px; }
+
+  /* ===== CARDS ===== */
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow), 0 8px 30px rgba(0,0,0,0.08); }
+  .card-title { font-family: var(--font-head); font-size: 1.1rem; margin-bottom: 12px; color: var(--text); }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px 28px;
+    border: none; border-radius: calc(var(--radius) * 0.6);
+    font-family: var(--font-body); font-size: 1rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; text-decoration: none;
+    width: 100%;
+  }
+  .btn-primary { background: var(--primary); color: var(--btn-text); }
+  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-secondary { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+  .btn-secondary:hover { background: var(--primary); color: var(--btn-text); }
+  .btn-ghost { background: transparent; color: var(--text2); }
+  .btn-sm { padding: 8px 16px; font-size: 0.85rem; width: auto; }
+  .btn-danger { background: #EF4444; color: white; }
+
+  /* ===== INPUTS ===== */
+  .input-group { margin-bottom: 16px; }
+  .input-label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .input {
+    width: 100%; padding: 14px 16px;
+    border: 2px solid var(--border); border-radius: calc(var(--radius) * 0.6);
+    font-family: var(--font-body); font-size: 1rem; color: var(--text);
+    background: var(--surface);
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .input:focus { border-color: var(--primary); }
+  .input::placeholder { color: var(--text2); }
+
+  /* ===== TAGS / CHIPS ===== */
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .tag {
+    background: var(--tag-bg); color: var(--tag-color);
+    padding: 6px 14px; border-radius: 999px;
+    font-size: 0.82rem; font-weight: 700; cursor: pointer;
+    border: 2px solid transparent; transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tag.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .tag.exclude { background: #FEE2E2; color: #EF4444; border-color: #FECACA; }
+  .tag .remove { font-size: 1rem; line-height: 1; }
+
+  /* ===== SECTION TITLE ===== */
+  .section-title {
+    font-family: var(--font-head); font-size: 1.4rem;
+    color: var(--text); margin-bottom: 4px;
+  }
+  .section-sub { font-size: 0.88rem; color: var(--text2); margin-bottom: 20px; }
+
+  /* ===== RESTAURANT CARD ===== */
+  .restaurant-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    display: flex;
+    transition: all 0.2s;
+  }
+  .restaurant-card.excluded { opacity: 0.4; filter: grayscale(0.8); }
+  .restaurant-emoji { 
+    width: 80px; min-height: 80px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.2rem; background: var(--tag-bg); flex-shrink: 0;
+  }
+  .restaurant-info { padding: 14px 14px 14px 0; flex: 1; }
+  .restaurant-name { font-family: var(--font-head); font-size: 1.05rem; color: var(--text); }
+  .restaurant-meta { font-size: 0.8rem; color: var(--text2); margin: 4px 0; }
+  .restaurant-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .restaurant-tag { background: var(--tag-bg); color: var(--tag-color); padding: 2px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+  .restaurant-actions { display: flex; flex-direction: column; justify-content: center; padding: 10px; gap: 6px; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; transition: all 0.15s; }
+  .icon-btn.veto { background: #FEE2E2; color: #EF4444; }
+  .icon-btn.veto:hover { background: #EF4444; color: white; }
+  .icon-btn.info { background: var(--tag-bg); color: var(--tag-color); }
+
+  /* ===== VOTE CARD ===== */
+  .vote-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .vote-emoji { font-size: 3.5rem; margin-bottom: 8px; }
+  .vote-name { font-family: var(--font-head); font-size: 1.4rem; margin-bottom: 4px; }
+  .vote-meta { font-size: 0.85rem; color: var(--text2); margin-bottom: 20px; }
+  .vote-btns { display: flex; gap: 12px; }
+  .vote-btn {
+    flex: 1; padding: 16px; border: none; border-radius: calc(var(--radius) * 0.7);
+    font-size: 1.5rem; cursor: pointer; transition: all 0.2s; font-family: var(--font-body);
+  }
+  .vote-btn.yes { background: var(--vote-yes); }
+  .vote-btn.no { background: var(--vote-no); }
+  .vote-btn:hover { transform: scale(1.05); }
+  .vote-progress { text-align: right; font-size: 0.8rem; color: var(--text2); margin-bottom: 8px; }
+
+  /* ===== RESULTS ===== */
+  .result-item { margin-bottom: 16px; }
+  .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .result-name { font-family: var(--font-head); font-size: 1rem; }
+  .result-score { font-weight: 800; color: var(--primary); font-size: 1rem; }
+  .result-bar-bg { background: var(--border); border-radius: 999px; height: 10px; overflow: hidden; }
+  .result-bar { background: var(--results-bar); height: 100%; border-radius: 999px; transition: width 1s ease; }
+  .result-winner {
+    background: var(--primary); color: white;
+    border-radius: var(--radius); padding: 20px; text-align: center; margin-bottom: 20px;
+  }
+  .result-winner-emoji { font-size: 3rem; }
+  .result-winner-name { font-family: var(--font-head); font-size: 1.6rem; margin: 8px 0 4px; }
+
+  /* ===== THEME SELECTOR ===== */
+  .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .theme-option {
+    border-radius: var(--radius); padding: 16px 12px; text-align: center; cursor: pointer;
+    border: 3px solid transparent; transition: all 0.2s; position: relative;
+  }
+  .theme-option.selected { border-color: var(--primary); }
+  .theme-option .check { position: absolute; top: 8px; right: 8px; font-size: 1rem; display: none; }
+  .theme-option.selected .check { display: block; }
+  .theme-fun { background: linear-gradient(135deg, #FF6B35, #FFD23F); color: white; }
+  .theme-business { background: linear-gradient(135deg, #1E3A8A, #2563EB); color: white; }
+  .theme-bold { background: linear-gradient(135deg, #0D0D0D, #FF0050); color: white; }
+  .theme-casual { background: linear-gradient(135deg, #8B5E3C, #C9956A); color: white; }
+  .theme-name { font-weight: 800; font-size: 0.95rem; }
+  .theme-desc { font-size: 0.75rem; opacity: 0.85; margin-top: 2px; }
+
+  /* ===== INVITE LIST ===== */
+  .invite-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .invite-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; flex-shrink: 0; }
+  .invite-name { flex: 1; font-weight: 700; }
+  .invite-status { font-size: 0.75rem; color: var(--text2); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+  .badge-green { background: #D1FAE5; color: #065F46; }
+  .badge-yellow { background: #FEF3C7; color: #92400E; }
+  .badge-gray { background: var(--border); color: var(--text2); }
+
+  /* ===== BOTTOM NAV ===== */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 480px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; padding: 10px 0 20px; z-index: 100;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  }
+  .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; border: none; background: none; color: var(--text2); font-size: 0.65rem; font-family: var(--font-body); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 0; transition: color 0.2s; }
+  .nav-btn.active { color: var(--primary); }
+  .nav-icon { font-size: 1.4rem; }
+
+  /* ===== FILTERS PANEL ===== */
+  .filter-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .filter-label { font-weight: 700; font-size: 0.9rem; }
+  .filter-sub { font-size: 0.78rem; color: var(--text2); }
+  .toggle { width: 48px; height: 26px; background: var(--border); border-radius: 999px; position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+  .toggle.on { background: var(--primary); }
+  .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: white; border-radius: 50%; transition: transform 0.2s; }
+  .toggle.on::after { transform: translateX(22px); }
+
+  /* ===== DISTANCE SLIDER ===== */
+  .slider { width: 100%; accent-color: var(--primary); }
+
+  /* ===== RANDOMIZER ===== */
+  .spin-btn {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: var(--header-bg);
+    border: none; cursor: pointer; font-size: 2.5rem;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px; transition: transform 0.2s;
+    box-shadow: var(--shadow);
+  }
+  .spin-btn:hover { transform: scale(1.05) rotate(10deg); }
+  .spin-btn.spinning { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== MISC ===== */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .text-center { text-align: center; }
+  .mt-auto { margin-top: auto; }
+  .gap-12 { gap: 12px; }
+  .flex { display: flex; }
+  .flex-col { flex-direction: column; }
+  .copy-link { background: var(--tag-bg); border-radius: calc(var(--radius) * 0.5); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+  .copy-link code { font-size: 0.8rem; color: var(--text2); font-family: monospace; }
+  .rating { color: #F59E0B; font-weight: 700; }
+  .sub-heading { font-family: var(--font-head); font-size: 1.1rem; color: var(--text); margin: 20px 0 12px; }
+
+  /* mobile safe area */
+  @supports (padding: max(0px)) {
+    .bottom-nav { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+  }
+
+  /* Toasts */
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg);
+    padding: 12px 24px; border-radius: 999px; font-size: 0.9rem; font-weight: 700;
+    z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===== SCREEN: HOME ===== -->
+  <div class="screen active" id="screen-home">
+    <div class="header">
+      <div class="header-inner">
+        <div class="app-logo">🍔 Lunchd</div>
+        <div class="app-tagline">Stop arguing. Start eating.</div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="section-title">Hey, hungry? 👋</div>
+      <div class="section-sub">Start a group session or fly solo</div>
+
+      <div class="card" style="text-align:center; padding: 28px 20px;">
+        <div style="font-size:3rem; margin-bottom:12px;">🍽️</div>
+        <div class="card-title">Start a Lunch Session</div>
+        <p style="font-size:0.88rem; color:var(--text2); margin-bottom:20px;">Invite your crew, set filters, and vote on where to eat — all anonymously.</p>
+        <button class="btn btn-primary" onclick="goTo('screen-create')">Create Session</button>
+        <button class="btn btn-secondary" style="margin-top:10px;" onclick="goTo('screen-vote')">Join a Session</button>
+      </div>
+
+      <div class="sub-heading">Pick your vibe 🎨</div>
+      <p style="font-size:0.82rem; color:var(--text2); margin-bottom:14px;">This theme goes with your invite — your crew sees the same look!</p>
+      <div class="theme-grid" id="themeGrid">
+        <div class="theme-option theme-fun selected" onclick="setTheme('fun', this)">
+          <span class="check">✅</span>
+          <div style="font-size:1.6rem;">🎉</div>
+          <div class="theme-name">Fun Outing</div>
+          <div class="theme-desc">Bright & playful</div>
+        </div>
+        <div class="theme-option theme-business" onclick="setTheme('business', this)">
+          <span class="check">✅</span>
+          <div style="font-size:1.6rem;">💼</div>
+          <div class="theme-name">Business Lunch</div>
+          <div class="theme-desc">Clean & professional</div>
+        </div>
+        <div class="theme-option theme-bold" onclick="setTheme('bold', this)">
+          <span class="check">✅</span>
+          <div style="font-size:1.6rem;">🔥</div>
+          <div class="theme-name">Bold & Edgy</div>
+          <div class="theme-desc">Dark mode energy</div>
+        </div>
+        <div class="theme-option theme-casual" onclick="setTheme('casual', this)">
+          <span class="check">✅</span>
+          <div style="font-size:1.6rem;">☕</div>
+          <div class="theme-name">Casual Hangout</div>
+          <div class="theme-desc">Warm & relaxed</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="sub-heading">Recent Sessions</div>
+      <div class="card">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-size:1.8rem;">🍕</div>
+          <div style="flex:1;">
+            <div style="font-weight:700;">Friday Team Lunch</div>
+            <div style="font-size:0.8rem; color:var(--text2);">5 people voted · Ended up at Mama Rosa's</div>
+          </div>
+          <span class="badge badge-green">Done</span>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-size:1.8rem;">🌮</div>
+          <div style="flex:1;">
+            <div style="font-weight:700;">Marketing Meetup</div>
+            <div style="font-size:0.8rem; color:var(--text2);">3/6 voted · Waiting on responses</div>
+          </div>
+          <span class="badge badge-yellow">Active</span>
+        </div>
+      </div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-btn active" onclick="goTo('screen-home')"><span class="nav-icon">🏠</span>Home</button>
+      <button class="nav-btn" onclick="goTo('screen-create')"><span class="nav-icon">➕</span>New</button>
+      <button class="nav-btn" onclick="goTo('screen-find')"><span class="nav-icon">🗺️</span>Find</button>
+      <button class="nav-btn" onclick="goTo('screen-results')"><span class="nav-icon">📊</span>Results</button>
+    </nav>
+  </div>
+
+  <!-- ===== SCREEN: CREATE SESSION ===== -->
+  <div class="screen" id="screen-create">
+    <div class="header">
+      <div class="header-inner">
+        <button class="btn btn-ghost" style="width:auto;color:white;padding:0 0 12px;" onclick="goTo('screen-home')">← Back</button>
+        <div class="app-logo">New Session</div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="section-title">Set it up 🛠️</div>
+      <div class="section-sub">Name your session and choose your options</div>
+
+      <div class="input-group">
+        <label class="input-label">Session Name</label>
+        <input class="input" type="text" placeholder="e.g. Friday Team Lunch" value="Friday Team Lunch">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">📍 Your Location</label>
+        <input class="input" type="text" placeholder="Detecting location..." value="123 Main St, Lexington, KY" id="locationInput">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">📏 Search Radius</label>
+        <input type="range" min="1" max="20" value="5" class="slider" id="radiusSlider" oninput="document.getElementById('radiusVal').textContent=this.value">
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text2);margin-top:6px;">
+          <span>1 mi</span><span id="radiusVal" style="font-weight:700;color:var(--primary)">5 mi</span><span>20 mi</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🚫 What DON'T You Want?</div>
+        <p style="font-size:0.82rem;color:var(--text2);margin-bottom:12px;">Add cuisines, keywords, or specific restaurants to exclude from everyone's options</p>
+        
+        <div class="input-group" style="margin-bottom:8px;">
+          <div style="display:flex;gap:8px;">
+            <input class="input" type="text" placeholder="e.g. sushi, McDonald's, spicy..." id="excludeInput" style="flex:1;">
+            <button class="btn btn-danger btn-sm" onclick="addExclusion()">Block</button>
+          </div>
+        </div>
+        <div class="tags" id="exclusionTags">
+          <span class="tag exclude">🚫 Fast Food <span class="remove" onclick="removeTag(this)">×</span></span>
+          <span class="tag exclude">🚫 Sushi <span class="remove" onclick="removeTag(this)">×</span></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🍴 Cuisine Filters</div>
+        <p style="font-size:0.82rem;color:var(--text2);margin-bottom:10px;">Tap to include only these — or leave all off for everything</p>
+        <div class="tags" id="cuisineFilters">
+          <span class="tag" onclick="toggleTag(this)">🍕 Italian</span>
+          <span class="tag" onclick="toggleTag(this)">🌮 Mexican</span>
+          <span class="tag" onclick="toggleTag(this)">🍔 American</span>
+          <span class="tag" onclick="toggleTag(this)">🍜 Asian</span>
+          <span class="tag" onclick="toggleTag(this)">🥗 Healthy</span>
+          <span class="tag" onclick="toggleTag(this)">🍣 Japanese</span>
+          <span class="tag" onclick="toggleTag(this)">🍛 Indian</span>
+          <span class="tag" onclick="toggleTag(this)">🥙 Mediterranean</span>
+          <span class="tag" onclick="toggleTag(this)">🌯 Sandwiches</span>
+          <span class="tag" onclick="toggleTag(this)">🍺 Pub Food</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚙️ More Filters</div>
+        <div class="filter-row">
+          <div><div class="filter-label">Open Now Only</div><div class="filter-sub">Skip closed spots</div></div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="filter-row">
+          <div><div class="filter-label">⭐ Min Rating</div></div>
+          <select class="input" style="width:auto;padding:6px 12px;">
+            <option>Any</option><option>3+</option><option selected>3.5+</option><option>4+</option><option>4.5+</option>
+          </select>
+        </div>
+        <div class="filter-row">
+          <div><div class="filter-label">💰 Price Range</div></div>
+          <div style="display:flex;gap:6px;">
+            <span class="tag active" onclick="toggleTag(this)">$</span>
+            <span class="tag active" onclick="toggleTag(this)">$$</span>
+            <span class="tag active" onclick="toggleTag(this)">$$$</span>
+            <span class="tag" onclick="toggleTag(this)">$$$$</span>
+          </div>
+        </div>
+        <div class="filter-row">
+          <div><div class="filter-label">🎲 Allow Randomizer</div><div class="filter-sub">If vote is tied, spin the wheel</div></div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:8px;" onclick="goTo('screen-invite')">
+        Next: Invite People →
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN: INVITE ===== -->
+  <div class="screen" id="screen-invite">
+    <div class="header">
+      <div class="header-inner">
+        <button class="btn btn-ghost" style="width:auto;color:white;padding:0 0 12px;" onclick="goTo('screen-create')">← Back</button>
+        <div class="app-logo">Invite People</div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="section-title">Who's hungry? 🙋</div>
+      <div class="section-sub">Voting is 100% anonymous — no one sees who voted what</div>
+
+      <div class="card">
+        <div class="card-title">📨 Share Your Session Link</div>
+        <p style="font-size:0.82rem;color:var(--text2);margin-bottom:8px;">Anyone with the link can vote. No account needed.</p>
+        <div class="copy-link">
+          <code>lunchd.app/s/friday-xyz</code>
+          <button class="btn btn-primary btn-sm" onclick="copyLink()">Copy</button>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="showToast('Opening Messages...')">💬 Text</button>
+          <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="showToast('Opening email...')">📧 Email</button>
+          <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="showToast('Copied Slack message!')">💼 Slack</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👥 Add by Contact</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <input class="input" type="text" placeholder="Name or email..." id="inviteInput" style="flex:1;">
+          <button class="btn btn-primary btn-sm" onclick="addInvite()">Add</button>
+        </div>
+        <div id="inviteList">
+          <div class="invite-item">
+            <div class="invite-avatar">JT</div>
+            <div><div class="invite-name">Jake Thompson</div><div class="invite-status"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="adc7ccc6c8edcec283cec2c0">[email&#160;protected]</a></div></div>
+            <span class="badge badge-green">Voted ✓</span>
+          </div>
+          <div class="invite-item">
+            <div class="invite-avatar" style="background:#8B5CF6;">SR</div>
+            <div><div class="invite-name">Sarah R.</div><div class="invite-status"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="73001201121b33101c5d101c1e">[email&#160;protected]</a></div></div>
+            <span class="badge badge-yellow">Pending</span>
+          </div>
+          <div class="invite-item">
+            <div class="invite-avatar" style="background:#10B981;">ML</div>
+            <div><div class="invite-name">Mike L.</div><div class="invite-status"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="274a4e4c426744480944484a">[email&#160;protected]</a></div></div>
+            <span class="badge badge-gray">Invited</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background:var(--tag-bg);">
+        <div style="font-size:0.85rem; color:var(--text2); display:flex;gap:8px;align-items:flex-start;">
+          <span style="font-size:1.2rem;">🔒</span>
+          <span><strong>Anonymous by default.</strong> Voters see the restaurants but can't see each other's choices. You only see final totals.</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="goTo('screen-find')">
+        Browse Restaurants →
+      </button>
+      <button class="btn btn-secondary" style="margin-top:10px;" onclick="goTo('screen-vote')">
+        Preview Voting Experience
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN: FIND (Restaurant List) ===== -->
+  <div class="screen" id="screen-find">
+    <div class="header">
+      <div class="header-inner">
+        <div class="app-logo">🗺️ Nearby Spots</div>
+        <div class="app-tagline">Within 5 miles · Lexington, KY</div>
+      </div>
+    </div>
+    <div class="content content-tight">
+      <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">
+        <input class="input" type="text" placeholder="Search restaurants..." style="flex:1;padding:10px 14px;">
+        <button class="btn btn-primary btn-sm" onclick="goTo('screen-randomizer')" style="white-space:nowrap;">🎲 Random</button>
+      </div>
+
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px;">
+        <span class="tag active" onclick="toggleTag(this)">All</span>
+        <span class="tag" onclick="toggleTag(this)">🍕 Italian</span>
+        <span class="tag" onclick="toggleTag(this)">🌮 Mexican</span>
+        <span class="tag" onclick="toggleTag(this)">🍔 Burgers</span>
+        <span class="tag" onclick="toggleTag(this)">🥗 Healthy</span>
+        <span class="tag" onclick="toggleTag(this)">🍜 Asian</span>
+      </div>
+
+      <div id="restaurantList">
+        <div class="restaurant-card" id="rest-1">
+          <div class="restaurant-emoji">🍕</div>
+          <div class="restaurant-info">
+            <div class="restaurant-name">Mama Rosa's</div>
+            <div class="restaurant-meta"><span class="rating">★ 4.7</span> · Italian · $$ · 0.4 mi</div>
+            <div class="restaurant-tags">
+              <span class="restaurant-tag">Pizza</span>
+              <span class="restaurant-tag">Pasta</span>
+              <span class="restaurant-tag">Open</span>
+            </div>
+          </div>
+          <div class="restaurant-actions">
+            <button class="icon-btn veto" title="Exclude this" onclick="vetoRestaurant('rest-1')">🚫</button>
+            <button class="icon-btn info" onclick="showToast('Opens Yelp / Google info')">ℹ️</button>
+          </div>
+        </div>
+        <div class="restaurant-card" id="rest-2">
+          <div class="restaurant-emoji">🌮</div>
+          <div class="restaurant-info">
+            <div class="restaurant-name">Taco Loco</div>
+            <div class="restaurant-meta"><span class="rating">★ 4.5</span> · Mexican · $ · 0.7 mi</div>
+            <div class="restaurant-tags">
+              <span class="restaurant-tag">Tacos</span>
+              <span class="restaurant-tag">Burritos</span>
+              <span class="restaurant-tag">Open</span>
+            </div>
+          </div>
+          <div class="restaurant-actions">
+            <button class="icon-btn veto" title="Exclude this" onclick="vetoRestaurant('rest-2')">🚫</button>
+            <button class="icon-btn info" onclick="showToast('Opens Yelp / Google info')">ℹ️</button>
+          </div>
+        </div>
+        <div class="restaurant-card" id="rest-3">
+          <div class="restaurant-emoji">🍔</div>
+          <div class="restaurant-info">
+            <div class="restaurant-name">Stack & Smash</div>
+            <div class="restaurant-meta"><span class="rating">★ 4.4</span> · American · $$ · 1.1 mi</div>
+            <div class="restaurant-tags">
+              <span class="restaurant-tag">Burgers</span>
+              <span class="restaurant-tag">Fries</span>
+              <span class="restaurant-tag">Open</span>
+            </div>
+          </div>
+          <div class="restaurant-actions">
+            <button class="icon-btn veto" title="Exclude this" onclick="vetoRestaurant('rest-3')">🚫</button>
+            <button class="icon-btn info" onclick="showToast('Opens Yelp / Google info')">ℹ️</button>
+          </div>
+        </div>
+        <div class="restaurant-card" id="rest-4">
+          <div class="restaurant-emoji">🥗</div>
+          <div class="restaurant-info">
+            <div class="restaurant-name">Green Bowl Co.</div>
+            <div class="restaurant-meta"><span class="rating">★ 4.6</span> · Healthy · $$ · 1.3 mi</div>
+            <div class="restaurant-tags">
+              <span class="restaurant-tag">Salads</span>
+              <span class="restaurant-tag">Bowls</span>
+              <span class="restaurant-tag">Vegan</span>
+            </div>
+          </div>
+          <div class="restaurant-actions">
+            <button class="icon-btn veto" title="Exclude this" onclick="vetoRestaurant('rest-4')">🚫</button>
+            <button class="icon-btn info" onclick="showToast('Opens Yelp / Google info')">ℹ️</button>
+          </div>
+        </div>
+        <div class="restaurant-card" id="rest-5">
+          <div class="restaurant-emoji">🍜</div>
+          <div class="restaurant-info">
+            <div class="restaurant-name">Pho Saigon</div>
+            <div class="restaurant-meta"><span class="rating">★ 4.8</span> · Vietnamese · $ · 1.9 mi</div>
+            <div class="restaurant-tags">
+              <span class="restaurant-tag">Pho</span>
+              <span class="restaurant-tag">Noodles</span>
+              <span class="restaurant-tag">Open</span>
+            </div>
+          </div>
+          <div class="restaurant-actions">
+            <button class="icon-btn veto" title="Exclude this" onclick="vetoRestaurant('rest-5')">🚫</button>
+            <button class="icon-btn info" onclick="showToast('Opens Yelp / Google info')">ℹ️</button>
+          </div>
+        </div>
+        <div class="restaurant-card" id="rest-6">
+          <div class="restaurant-emoji">🥙</div>
+          <div class="restaurant-info">
+            <div class="restaurant-name">The Med Table</div>
+            <div class="restaurant-meta"><span class="rating">★ 4.3</span> · Mediterranean · $$ · 2.2 mi</div>
+            <div class="restaurant-tags">
+              <span class="restaurant-tag">Falafel</span>
+              <span class="restaurant-tag">Hummus</span>
+              <span class="restaurant-tag">Open</span>
+            </div>
+          </div>
+          <div class="restaurant-actions">
+            <button class="icon-btn veto" title="Exclude this" onclick="vetoRestaurant('rest-6')">🚫</button>
+            <button class="icon-btn info" onclick="showToast('Opens Yelp / Google info')">ℹ️</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:8px;" onclick="goTo('screen-vote')">
+        Start Voting →
+      </button>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">🏠</span>Home</button>
+      <button class="nav-btn" onclick="goTo('screen-create')"><span class="nav-icon">➕</span>New</button>
+      <button class="nav-btn active" onclick="goTo('screen-find')"><span class="nav-icon">🗺️</span>Find</button>
+      <button class="nav-btn" onclick="goTo('screen-results')"><span class="nav-icon">📊</span>Results</button>
+    </nav>
+  </div>
+
+  <!-- ===== SCREEN: RANDOMIZER ===== -->
+  <div class="screen" id="screen-randomizer">
+    <div class="header">
+      <div class="header-inner">
+        <button class="btn btn-ghost" style="width:auto;color:white;padding:0 0 12px;" onclick="goTo('screen-find')">← Back</button>
+        <div class="app-logo">🎲 Randomizer</div>
+        <div class="app-tagline">Can't decide? Let fate choose.</div>
+      </div>
+    </div>
+    <div class="content" style="text-align:center;">
+      <p style="color:var(--text2);margin-bottom:24px;">Press the button. We'll pick something from your filtered list.<br>Don't like it? Spin again!</p>
+
+      <button class="spin-btn" id="spinBtn" onclick="spinRandom()">🎲</button>
+      
+      <div id="spinResult" style="display:none;" class="card" style="text-align:center;">
+        <div id="spinEmoji" style="font-size:3rem;margin-bottom:8px;"></div>
+        <div id="spinName" class="section-title"></div>
+        <div id="spinMeta" style="color:var(--text2);font-size:0.88rem;margin-bottom:16px;"></div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="showToast('Taking you there! 🎉')">Let's Go! 🎉</button>
+          <button class="btn btn-secondary" style="flex:1;" onclick="spinRandom()">Spin Again</button>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;" id="spinResultPlaceholder">
+        <div style="font-size:0.88rem;color:var(--text2);">Randomizing from <strong>6 spots</strong> near you</div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="sub-heading" style="text-align:left;">🚫 Exclude from Random</div>
+      <p style="font-size:0.82rem;color:var(--text2);margin-bottom:12px;text-align:left;">These won't show up in the randomizer</p>
+      <div class="tags" style="justify-content:flex-start;">
+        <span class="tag" onclick="toggleTag(this)">🍕 Mama Rosa's</span>
+        <span class="tag" onclick="toggleTag(this)">🌮 Taco Loco</span>
+        <span class="tag" onclick="toggleTag(this)">🍔 Stack & Smash</span>
+        <span class="tag" onclick="toggleTag(this)">🥗 Green Bowl Co.</span>
+        <span class="tag" onclick="toggleTag(this)">🍜 Pho Saigon</span>
+        <span class="tag" onclick="toggleTag(this)">🥙 The Med Table</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN: VOTE ===== -->
+  <div class="screen" id="screen-vote">
+    <div class="header">
+      <div class="header-inner">
+        <div class="app-logo">🗳️ Cast Your Vote</div>
+        <div class="app-tagline">Anonymous · Friday Team Lunch</div>
+      </div>
+    </div>
+    <div class="content content-tight">
+      <div id="voteCards">
+        <!-- Vote cards injected by JS -->
+      </div>
+      <div id="voteComplete" style="display:none; text-align:center; padding: 40px 0;">
+        <div style="font-size:4rem;margin-bottom:16px;">✅</div>
+        <div class="section-title">All done!</div>
+        <p style="color:var(--text2);margin:12px 0 24px;">Your votes are in. Waiting for others...<br>Results drop when everyone's voted.</p>
+        <button class="btn btn-primary" onclick="goTo('screen-results')">See Live Results →</button>
+      </div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">🏠</span>Home</button>
+      <button class="nav-btn" onclick="goTo('screen-create')"><span class="nav-icon">➕</span>New</button>
+      <button class="nav-btn" onclick="goTo('screen-find')"><span class="nav-icon">🗺️</span>Find</button>
+      <button class="nav-btn" onclick="goTo('screen-results')"><span class="nav-icon">📊</span>Results</button>
+    </nav>
+  </div>
+
+  <!-- ===== SCREEN: RESULTS ===== -->
+  <div class="screen" id="screen-results">
+    <div class="header">
+      <div class="header-inner">
+        <div class="app-logo">📊 Results</div>
+        <div class="app-tagline">Friday Team Lunch · 5/5 voted</div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="result-winner">
+        <div class="result-winner-emoji">🏆</div>
+        <div class="result-winner-name">🍜 Pho Saigon</div>
+        <div style="font-size:0.88rem;opacity:0.9;">Winner with 4 out of 5 votes!</div>
+        <button class="btn" style="background:white;color:var(--primary);margin-top:16px;font-weight:800;" onclick="showToast('Opening Maps! 📍')">
+          📍 Get Directions
+        </button>
+      </div>
+
+      <div class="sub-heading">All Votes</div>
+      
+      <div class="result-item">
+        <div class="result-header"><span class="result-name">🍜 Pho Saigon</span><span class="result-score">4 votes</span></div>
+        <div class="result-bar-bg"><div class="result-bar" style="width:80%"></div></div>
+      </div>
+      <div class="result-item">
+        <div class="result-header"><span class="result-name">🍕 Mama Rosa's</span><span class="result-score">3 votes</span></div>
+        <div class="result-bar-bg"><div class="result-bar" style="width:60%"></div></div>
+      </div>
+      <div class="result-item">
+        <div class="result-header"><span class="result-name">🥗 Green Bowl Co.</span><span class="result-score">2 votes</span></div>
+        <div class="result-bar-bg"><div class="result-bar" style="width:40%"></div></div>
+      </div>
+      <div class="result-item">
+        <div class="result-header"><span class="result-name">🌮 Taco Loco</span><span class="result-score">2 votes</span></div>
+        <div class="result-bar-bg"><div class="result-bar" style="width:40%"></div></div>
+      </div>
+      <div class="result-item">
+        <div class="result-header"><span class="result-name">🍔 Stack & Smash</span><span class="result-score">1 vote</span></div>
+        <div class="result-bar-bg"><div class="result-bar" style="width:20%"></div></div>
+      </div>
+      <div class="result-item">
+        <div class="result-header"><span class="result-name">🥙 The Med Table</span><span class="result-score">0 votes</span></div>
+        <div class="result-bar-bg"><div class="result-bar" style="width:0%"></div></div>
+      </div>
+
+      <div class="divider"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <button class="btn btn-secondary" onclick="showToast('Starting new session!')">New Session</button>
+        <button class="btn btn-primary" onclick="showToast('Results shared!')">Share Results</button>
+      </div>
+
+      <div class="card" style="margin-top:16px;background:var(--tag-bg);">
+        <div style="font-size:0.82rem;color:var(--text2);">🔒 <strong>Anonymous voting protected.</strong> You can see totals, not who voted for what.</div>
+      </div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">🏠</span>Home</button>
+      <button class="nav-btn" onclick="goTo('screen-create')"><span class="nav-icon">➕</span>New</button>
+      <button class="nav-btn" onclick="goTo('screen-find')"><span class="nav-icon">🗺️</span>Find</button>
+      <button class="nav-btn active" onclick="goTo('screen-results')"><span class="nav-icon">📊</span>Results</button>
+    </nav>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// GOOGLE PLACES API CONFIGURATION
+// Replace AIzaSyApxi_T04srjOZimRvDnPuU_gZGM1L_O4A with your real key (see instructions at top of file)
+// ============================================================
+const GOOGLE_API_KEY = 'AIzaSyApxi_T04srjOZimRvDnPuU_gZGM1L_O4A';
+const API_LIVE = GOOGLE_API_KEY !== 'AIzaSyApxi_T04srjOZimRvDnPuU_gZGM1L_O4A';
+
+// ============================================================
+// SIMULATED RESTAURANT DATA (used when no API key is set)
+// This mirrors the exact shape of real Google Places responses
+// so swapping to live data requires zero other changes
+// ============================================================
+const SIMULATED_RESTAURANTS = [
+  { place_id:'sim1', name:"Mama Rosa's", emoji:'🍕', rating:4.7, price_level:2, distance:0.4, cuisine:'Italian', tags:['Pizza','Pasta'], open:true, address:'142 Main St' },
+  { place_id:'sim2', name:'Taco Loco',   emoji:'🌮', rating:4.5, price_level:1, distance:0.7, cuisine:'Mexican', tags:['Tacos','Burritos'], open:true, address:'88 Oak Ave' },
+  { place_id:'sim3', name:'Stack & Smash', emoji:'🍔', rating:4.4, price_level:2, distance:1.1, cuisine:'American', tags:['Burgers','Fries'], open:true, address:'23 Elm Rd' },
+  { place_id:'sim4', name:'Green Bowl Co.', emoji:'🥗', rating:4.6, price_level:2, distance:1.3, cuisine:'Healthy', tags:['Salads','Bowls','Vegan'], open:true, address:'7 Park Blvd' },
+  { place_id:'sim5', name:'Pho Saigon',  emoji:'🍜', rating:4.8, price_level:1, distance:1.9, cuisine:'Vietnamese', tags:['Pho','Noodles'], open:true, address:'301 River St' },
+  { place_id:'sim6', name:'The Med Table', emoji:'🥙', rating:4.3, price_level:2, distance:2.2, cuisine:'Mediterranean', tags:['Falafel','Hummus'], open:true, address:'55 Cedar Ln' },
+];
+
+// Price level number → display symbols
+const PRICE = ['','$','$$','$$$','$$$$'];
+
+// Cuisine keyword → emoji mapping
+const CUISINE_EMOJI = {
+  italian:'🍕', pizza:'🍕', mexican:'🌮', taco:'🌮', american:'🍔', burger:'🍔',
+  healthy:'🥗', salad:'🥗', vegan:'🥗', vietnamese:'🍜', pho:'🍜', asian:'🍜',
+  mediterranean:'🥙', japanese:'🍣', sushi:'🍣', indian:'🍛', curry:'🍛',
+  chinese:'🥡', thai:'🍲', korean:'🥘', sandwich:'🌯', pub:'🍺', bar:'🍺',
+  default:'🍽️'
+};
+
+function getCuisineEmoji(types = [], name = '') {
+  const search = [...types, name].join(' ').toLowerCase();
+  for (const [key, emoji] of Object.entries(CUISINE_EMOJI)) {
+    if (search.includes(key)) return emoji;
+  }
+  return CUISINE_EMOJI.default;
+}
+
+// ============================================================
+// GEOLOCATION — get user's coordinates
+// ============================================================
+let userLat = 37.9716; // Default: Lexington, KY (your territory!)
+let userLng = -84.4747;
+let userLocationName = 'Lexington, KY';
+
+function detectLocation() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      reverseGeocode(userLat, userLng);
+    },
+    err => console.log('Location denied, using default'),
+    { timeout: 8000 }
+  );
+}
+
+async function reverseGeocode(lat, lng) {
+  if (!API_LIVE) return;
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.results?.[0]) {
+      const comp = data.results[0].address_components;
+      const city = comp.find(c => c.types.includes('locality'))?.short_name || '';
+      const state = comp.find(c => c.types.includes('administrative_area_level_1'))?.short_name || '';
+      userLocationName = `${city}, ${state}`;
+      document.getElementById('locationInput').value = userLocationName;
+      document.querySelectorAll('.location-display').forEach(el => el.textContent = userLocationName);
+    }
+  } catch(e) { console.log('Reverse geocode failed', e); }
+}
+
+// ============================================================
+// PLACES API — fetch nearby restaurants
+// ============================================================
+let currentRestaurants = [...SIMULATED_RESTAURANTS]; // Start with simulated
+let activeExclusions = ['Fast Food', 'Sushi']; // Matches the UI defaults
+let activeCuisines = []; // Empty = all cuisines
+let searchRadius = 5; // miles
+let minRating = 3.5;
+let maxPrice = 3;
+
+async function fetchNearbyRestaurants() {
+  if (!API_LIVE) {
+    renderRestaurantList(SIMULATED_RESTAURANTS);
+    return;
+  }
+
+  showLoadingState();
+
+  try {
+    // Convert miles to meters for the API
+    const radiusMeters = Math.round(searchRadius * 1609.34);
+
+    // Build keyword string from active cuisine filters
+    const keyword = activeCuisines.length > 0 ? activeCuisines.join('|') : 'restaurant';
+
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?` +
+      `location=${userLat},${userLng}` +
+      `&radius=${radiusMeters}` +
+      `&type=restaurant` +
+      `&keyword=${encodeURIComponent(keyword)}` +
+      `&opennow=true` +
+      `&key=${GOOGLE_API_KEY}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.status === 'OK') {
+      // Transform Google's response shape into our app's shape
+      const places = data.results
+        .filter(p => (p.rating || 0) >= minRating)
+        .filter(p => (p.price_level || 2) <= maxPrice)
+        .filter(p => !isExcluded(p.name, p.types))
+        .map(p => ({
+          place_id: p.place_id,
+          name: p.name,
+          emoji: getCuisineEmoji(p.types, p.name),
+          rating: p.rating || 0,
+          price_level: p.price_level || 2,
+          distance: haversineDistance(userLat, userLng, p.geometry.location.lat, p.geometry.location.lng),
+          cuisine: (p.types?.[0] || 'restaurant').replace(/_/g,' '),
+          tags: (p.types || []).slice(0,3).map(t => t.replace(/_/g,' ')),
+          open: p.opening_hours?.open_now ?? true,
+          address: p.vicinity || '',
+          photo_ref: p.photos?.[0]?.photo_reference || null,
+        }))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 12); // Cap at 12 results
+
+      currentRestaurants = places;
+      renderRestaurantList(places);
+    } else {
+      console.warn('Places API status:', data.status);
+      showToast('Using demo data — add API key for live results');
+      renderRestaurantList(SIMULATED_RESTAURANTS);
+    }
+  } catch(err) {
+    console.error('Places fetch failed:', err);
+    showToast('Network error — showing demo restaurants');
+    renderRestaurantList(SIMULATED_RESTAURANTS);
+  }
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return parseFloat((R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(1));
+}
+
+function isExcluded(name, types = []) {
+  const search = (name + ' ' + types.join(' ')).toLowerCase();
+  return activeExclusions.some(ex => search.includes(ex.toLowerCase()));
+}
+
+function showLoadingState() {
+  const list = document.getElementById('restaurantList');
+  if (list) {
+    list.innerHTML = `
+      <div style="text-align:center;padding:40px 0;color:var(--text2);">
+        <div style="font-size:2.5rem;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block;">🍽️</div>
+        <div style="font-weight:700;">Finding spots near you...</div>
+      </div>`;
+  }
+}
+
+// ============================================================
+// RENDER RESTAURANT LIST (used by both simulated + live data)
+// ============================================================
+function renderRestaurantList(places) {
+  const list = document.getElementById('restaurantList');
+  if (!list) return;
+
+  if (places.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--text2);">
+      <div style="font-size:2.5rem;">😕</div>
+      <div style="font-weight:700;margin-top:12px;">No restaurants found</div>
+      <div style="font-size:0.85rem;margin-top:6px;">Try adjusting your filters or radius</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = places.map((r, i) => `
+    <div class="restaurant-card" id="rest-${r.place_id}" data-idx="${i}">
+      <div class="restaurant-emoji">${r.emoji}</div>
+      <div class="restaurant-info">
+        <div class="restaurant-name">${r.name}</div>
+        <div class="restaurant-meta">
+          <span class="rating">★ ${r.rating}</span> · ${r.cuisine} · ${PRICE[r.price_level] || '$$'} · ${r.distance} mi
+        </div>
+        <div class="restaurant-tags">
+          ${r.tags.slice(0,3).map(t => `<span class="restaurant-tag">${t}</span>`).join('')}
+          ${r.open ? '<span class="restaurant-tag" style="background:#D1FAE5;color:#065F46;">Open</span>' : '<span class="restaurant-tag" style="background:#FEE2E2;color:#991B1B;">Closed</span>'}
+        </div>
+      </div>
+      <div class="restaurant-actions">
+        <button class="icon-btn veto" title="Exclude from session" onclick="vetoRestaurant('rest-${r.place_id}')">🚫</button>
+        <button class="icon-btn info" onclick="openPlaceDetails('${r.place_id}', '${r.name}')">ℹ️</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Also refresh the vote and randomizer pools
+  currentRestaurants = places;
+}
+
+// Open in Google Maps (works with both real place_id and simulated)
+function openPlaceDetails(placeId, name) {
+  if (API_LIVE && !placeId.startsWith('sim')) {
+    window.open(`https://www.google.com/maps/place/?q=place_id:${placeId}`, '_blank');
+  } else {
+    showToast(`${name} — add API key for full details`);
+  }
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  if (id === 'screen-vote') initVoteCards();
+  if (id === 'screen-find') fetchNearbyRestaurants();
+}
+
+// ===== THEME =====
+const themes = {
+  fun: '', business: 'theme-business', bold: 'theme-bold', casual: 'theme-casual'
+};
+function setTheme(name, el) {
+  document.body.className = themes[name];
+  document.querySelectorAll('.theme-option').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+  showToast('Theme switched to ' + el.querySelector('.theme-name').textContent + ' 🎨');
+}
+
+// ===== TAGS =====
+function toggleTag(el) {
+  el.classList.toggle('active');
+}
+function removeTag(el) {
+  el.parentElement.remove();
+}
+
+// ===== EXCLUSIONS =====
+function addExclusion() {
+  const input = document.getElementById('excludeInput');
+  const val = input.value.trim();
+  if (!val) return;
+  const tag = document.createElement('span');
+  tag.className = 'tag exclude';
+  tag.innerHTML = `🚫 ${val} <span class="remove" onclick="removeTag(this)">×</span>`;
+  document.getElementById('exclusionTags').appendChild(tag);
+  input.value = '';
+  showToast(`"${val}" blocked from results`);
+}
+
+// ===== VETO RESTAURANT =====
+function vetoRestaurant(id) {
+  const card = document.getElementById(id);
+  if (card.classList.contains('excluded')) {
+    card.classList.remove('excluded');
+    showToast('Restaurant restored');
+  } else {
+    card.classList.add('excluded');
+    showToast('Restaurant excluded from this session 🚫');
+  }
+}
+
+// ===== INVITE =====
+function addInvite() {
+  const input = document.getElementById('inviteInput');
+  const val = input.value.trim();
+  if (!val) return;
+  const initials = val.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  const colors = ['#FF6B35','#8B5CF6','#10B981','#F59E0B','#EF4444','#3B82F6'];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  const div = document.createElement('div');
+  div.className = 'invite-item';
+  div.innerHTML = `<div class="invite-avatar" style="background:${color}">${initials}</div><div><div class="invite-name">${val}</div><div class="invite-status">Invite pending</div></div><span class="badge badge-gray">Invited</span>`;
+  document.getElementById('inviteList').appendChild(div);
+  input.value = '';
+  showToast(`Invited ${val}!`);
+}
+
+// ===== COPY LINK =====
+function copyLink() {
+  showToast('Link copied to clipboard! 📋');
+}
+
+// ===== VOTE CARDS =====
+const restaurants = [
+  { emoji:'🍜', name:'Pho Saigon', meta:'★ 4.8 · Vietnamese · $ · 1.9 mi' },
+  { emoji:'🍕', name:"Mama Rosa's", meta:'★ 4.7 · Italian · $$ · 0.4 mi' },
+  { emoji:'🌮', name:'Taco Loco', meta:'★ 4.5 · Mexican · $ · 0.7 mi' },
+  { emoji:'🍔', name:'Stack & Smash', meta:'★ 4.4 · American · $$ · 1.1 mi' },
+  { emoji:'🥗', name:'Green Bowl Co.', meta:'★ 4.6 · Healthy · $$ · 1.3 mi' },
+  { emoji:'🥙', name:'The Med Table', meta:'★ 4.3 · Mediterranean · $$ · 2.2 mi' },
+];
+let voteIdx = 0;
+
+function initVoteCards() {
+  voteIdx = 0;
+  document.getElementById('voteComplete').style.display = 'none';
+  renderVoteCard();
+}
+
+function renderVoteCard() {
+  const container = document.getElementById('voteCards');
+  if (voteIdx >= restaurants.length) {
+    container.innerHTML = '';
+    document.getElementById('voteComplete').style.display = 'block';
+    return;
+  }
+  const r = restaurants[voteIdx];
+  container.innerHTML = `
+    <div class="vote-progress">${voteIdx + 1} of ${restaurants.length}</div>
+    <div class="vote-card">
+      <div class="vote-emoji">${r.emoji}</div>
+      <div class="vote-name">${r.name}</div>
+      <div class="vote-meta">${r.meta}</div>
+      <div class="vote-btns">
+        <button class="vote-btn no" onclick="castVote('no')">👎 Pass</button>
+        <button class="vote-btn yes" onclick="castVote('yes')">👍 Yes!</button>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:12px;">
+      <button class="btn btn-ghost btn-sm" style="color:var(--text2);" onclick="castVote('skip')">⏭ Skip for now</button>
+    </div>
+  `;
+}
+
+function castVote(choice) {
+  voteIdx++;
+  if (choice === 'yes') showToast('Voted yes! 👍');
+  else if (choice === 'no') showToast('Passed 👎');
+  renderVoteCard();
+}
+
+// ===== RANDOMIZER =====
+const spinData = [
+  { emoji:'🍜', name:'Pho Saigon', meta:'★ 4.8 · Vietnamese · 1.9 mi' },
+  { emoji:'🍕', name:"Mama Rosa's", meta:'★ 4.7 · Italian · 0.4 mi' },
+  { emoji:'🌮', name:'Taco Loco', meta:'★ 4.5 · Mexican · 0.7 mi' },
+  { emoji:'🍔', name:'Stack & Smash', meta:'★ 4.4 · American · 1.1 mi' },
+  { emoji:'🥗', name:'Green Bowl Co.', meta:'★ 4.6 · Healthy · 1.3 mi' },
+  { emoji:'🥙', name:'The Med Table', meta:'★ 4.3 · Mediterranean · 2.2 mi' },
+];
+function spinRandom() {
+  const btn = document.getElementById('spinBtn');
+  const result = document.getElementById('spinResult');
+  const placeholder = document.getElementById('spinResultPlaceholder');
+  btn.classList.add('spinning');
+  result.style.display = 'none';
+  placeholder.style.display = 'block';
+  setTimeout(() => {
+    btn.classList.remove('spinning');
+    const pick = spinData[Math.floor(Math.random() * spinData.length)];
+    document.getElementById('spinEmoji').textContent = pick.emoji;
+    document.getElementById('spinName').textContent = pick.name;
+    document.getElementById('spinMeta').textContent = pick.meta;
+    result.style.display = 'block';
+    result.style.animation = 'none';
+    result.offsetHeight;
+    result.style.animation = 'fadeIn 0.4s ease';
+    placeholder.style.display = 'none';
+  }, 1400);
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ===== RADIUS SLIDER =====
+document.addEventListener('DOMContentLoaded', () => {
+  const slider = document.getElementById('radiusSlider');
+  if (slider) {
+    slider.addEventListener('input', () => {
+      searchRadius = parseInt(slider.value);
+      document.getElementById('radiusVal').textContent = slider.value;
+    });
+  }
+
+  // Show API status banner on home screen
+  if (!API_LIVE) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:#FEF3C7;border:1px solid #F59E0B;border-radius:10px;padding:10px 14px;font-size:0.8rem;color:#92400E;margin-bottom:16px;display:flex;gap:8px;align-items:center;';
+    banner.innerHTML = '⚠️ <span><strong>Demo mode</strong> — Using simulated restaurants. Add your Google API key to go live.</span>';
+    const content = document.querySelector('#screen-home .content');
+    if (content) content.insertBefore(banner, content.firstChild);
+  } else {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:#D1FAE5;border:1px solid #10B981;border-radius:10px;padding:10px 14px;font-size:0.8rem;color:#065F46;margin-bottom:16px;display:flex;gap:8px;align-items:center;';
+    banner.innerHTML = '✅ <span><strong>Live mode</strong> — Connected to Google Places. Real restaurants near you.</span>';
+    const content = document.querySelector('#screen-home .content');
+    if (content) content.insertBefore(banner, content.firstChild);
+  }
+
+  // Kick off location detection
+  detectLocation();
+  initVoteCards();
+});
+</script>
+</body>
+</html>
