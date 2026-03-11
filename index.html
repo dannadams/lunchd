@@ -644,7 +644,7 @@
     <div class="header">
       <div class="header-inner">
         <div class="app-logo">🗺️ Nearby Spots</div>
-        <div class="app-tagline">Within 5 miles · Lexington, KY</div>
+        <div class="app-tagline" id="find-tagline">Within 5 miles · Detecting location...</div>
       </div>
     </div>
     <div class="content content-tight">
@@ -916,7 +916,7 @@
 // Replace AIzaSyApxi_T04srjOZimRvDnPuU_gZGM1L_O4A with your real key (see instructions at top of file)
 // ============================================================
 const GOOGLE_API_KEY = 'AIzaSyApxi_T04srjOZimRvDnPuU_gZGM1L_O4A';
-const API_LIVE = GOOGLE_API_KEY !== 'YOUR_API_KEY_HERE';
+const API_LIVE = true;
 
 // ============================================================
 // SIMULATED RESTAURANT DATA (used when no API key is set)
@@ -1158,7 +1158,12 @@ function goTo(id) {
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
   if (id === 'screen-vote') initVoteCards();
-  if (id === 'screen-find') fetchNearbyRestaurants();
+  if (id === 'screen-find') {
+    const tag = document.getElementById('find-tagline');
+    const r = document.getElementById('radiusSlider')?.value || searchRadius;
+    if (tag) tag.textContent = r + ' mi · ' + userLocationName;
+    fetchNearbyRestaurants();
+  }
 }
 
 // ===== THEME =====
