@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lunchd — Where should we eat?</title>
 <!--
-  ======================================================h======
+  ============================================================
   LUNCHD.APP — Google Places API Integration
   ============================================================
   SETUP (3 steps, then you're live):
@@ -916,7 +916,7 @@
 // Replace AIzaSyApxi_T04srjOZimRvDnPuU_gZGM1L_O4A with your real key (see instructions at top of file)
 // ============================================================
 const GOOGLE_API_KEY = 'AIzaSyApxi_T04srjOZimRvDnPuU_gZGM1L_O4A';
-const API_LIVE = true;
+const API_LIVE = GOOGLE_API_KEY !== 'YOUR_API_KEY_HERE';
 
 // ============================================================
 // SIMULATED RESTAURANT DATA (used when no API key is set)
@@ -1008,50 +1008,63 @@ async function fetchNearbyRestaurants() {
   showLoadingState();
 
   try {
-    // Convert miles to meters for the API
     const radiusMeters = Math.round(searchRadius * 1609.34);
 
-    // Build keyword string from active cuisine filters
-    const keyword = activeCuisines.length > 0 ? activeCuisines.join('|') : 'restaurant';
+    const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_API_KEY,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.rating,places.priceLevel,places.location,places.types,places.currentOpeningHours,places.formattedAddress,places.photos'
+      },
+      body: JSON.stringify({
+        includedTypes: ['restaurant'],
+        maxResultCount: 12,
+        locationRestriction: {
+          circle: {
+            center: { latitude: userLat, longitude: userLng },
+            radius: radiusMeters
+          }
+        }
+      })
+    });
 
-    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?` +
-      `location=${userLat},${userLng}` +
-      `&radius=${radiusMeters}` +
-      `&type=restaurant` +
-      `&keyword=${encodeURIComponent(keyword)}` +
-      `&opennow=true` +
-      `&key=${GOOGLE_API_KEY}`;
-
-    const res = await fetch(url);
     const data = await res.json();
 
-    if (data.status === 'OK') {
-      // Transform Google's response shape into our app's shape
-      const places = data.results
+    if (data.places && data.places.length > 0) {
+      const priceLevelMap = {
+        'PRICE_LEVEL_FREE': 1,
+        'PRICE_LEVEL_INEXPENSIVE': 1,
+        'PRICE_LEVEL_MODERATE': 2,
+        'PRICE_LEVEL_EXPENSIVE': 3,
+        'PRICE_LEVEL_VERY_EXPENSIVE': 4
+      };
+
+      const places = data.places
         .filter(p => (p.rating || 0) >= minRating)
-        .filter(p => (p.price_level || 2) <= maxPrice)
-        .filter(p => !isExcluded(p.name, p.types))
+        .filter(p => !isExcluded(p.displayName?.text || '', p.types || []))
         .map(p => ({
-          place_id: p.place_id,
-          name: p.name,
-          emoji: getCuisineEmoji(p.types, p.name),
+          place_id: p.id,
+          name: p.displayName?.text || 'Unknown',
+          emoji: getCuisineEmoji(p.types || [], p.displayName?.text || ''),
           rating: p.rating || 0,
-          price_level: p.price_level || 2,
-          distance: haversineDistance(userLat, userLng, p.geometry.location.lat, p.geometry.location.lng),
-          cuisine: (p.types?.[0] || 'restaurant').replace(/_/g,' '),
-          tags: (p.types || []).slice(0,3).map(t => t.replace(/_/g,' ')),
-          open: p.opening_hours?.open_now ?? true,
-          address: p.vicinity || '',
-          photo_ref: p.photos?.[0]?.photo_reference || null,
+          price_level: priceLevelMap[p.priceLevel] || 2,
+          distance: haversineDistance(userLat, userLng,
+            p.location?.latitude || userLat,
+            p.location?.longitude || userLng),
+          cuisine: (p.types?.[0] || 'restaurant').replace(/_/g, ' '),
+          tags: (p.types || []).slice(0, 3).map(t => t.replace(/_/g, ' ')),
+          open: p.currentOpeningHours?.openNow ?? true,
+          address: p.formattedAddress || '',
+          photo_ref: p.photos?.[0]?.name || null,
         }))
-        .sort((a, b) => a.distance - b.distance)
-        .slice(0, 12); // Cap at 12 results
+        .sort((a, b) => a.distance - b.distance);
 
       currentRestaurants = places;
       renderRestaurantList(places);
     } else {
-      console.warn('Places API status:', data.status);
-      showToast('Using demo data — add API key for live results');
+      console.warn('Places API (New) returned no results:', data);
+      showToast('No restaurants found nearby — showing demo data');
       renderRestaurantList(SIMULATED_RESTAURANTS);
     }
   } catch(err) {
